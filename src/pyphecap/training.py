@@ -1,24 +1,22 @@
-import pandas as pd
-import numpy as np
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import roc_auc_score, roc_curve
-from sklearn.model_selection import StratifiedKFold, StratifiedShuffleSplit
+from sklearn.model_selection import StratifiedShuffleSplit
 
+from pyphecap.feature_matrix import build_feature_matrix
 from pyphecap.phecap_data import Data
+from pyphecap.sklearn_utils import get_auc
 from pyphecap.surrogate import Surrogates
 
 
 def train_phenotyping_model(data: Data, surrogates: Surrogates, selected_features,
                             method='lasso_bic', train_percent=0.7, num_splits=200):
-    matrix = generate_feature_matrix(data, surrogates, selected_features)
-    matrix[data.validation] = data.frame[data.validation]
-    matrix[data.label] = data.frame[data.label]
-    matrix = matrix[~pd.isnull(matrix[data.label])]
-    y = matrix[matrix[data.validation] == 0][data.label]
-    x = matrix[matrix[data.validation] == 0].drop(columns=[data.label, data.validation])
+    x, y = build_feature_matrix(data, surrogates, selected_features, is_validation=False)
+    # TODO: subject weights: subject_weight <- data$subject_weight[ii]
+    # TODO: penalty weights: penalty_weight <- c(
+    #     rep.int(0.0, attr(feature, "free")),
+    #     rep.int(1.0, ncol(feature) - attr(feature, "free")))
     coefficients, train_roc, train_auc, split_roc, split_auc = get_roc_auc(
         x, y, method=method, train_percent=train_percent
-
     )
     return coefficients, train_roc, split_roc
 
@@ -38,10 +36,7 @@ def get_roc_auc(x, y, method, train_percent):
         y_pred_tr = clf.predict(x.iloc[train_idx])
         y_pred_te = clf.predict(x.iloc[test_idx])
         roc_curve(y.iloc[train_idx], y_pred_tr)
-        curr_auc = []
-        for fpr, tpr, thresh in zip(*roc_curve(y.iloc[test_idx], y_pred_te, drop_intermediate=False)):
-            curr_auc.append((fpr, tpr, thresh))
-        auc_data.append(np.array(curr_auc))
+        auc_data.append(get_auc(y.iloc[test_idx], y_pred_te))
         roc_auc_score(y.iloc[train_idx], y_pred_tr)
         roc_auc = roc_auc_score(y.iloc[test_idx], y_pred_te)
         roc_data.append(roc_auc)
@@ -50,25 +45,3 @@ def get_roc_auc(x, y, method, train_percent):
     split_auc = sum(auc_data) / len(auc_data)
     split_roc = sum(roc_data)
     return coefficients, train_roc, train_auc, split_roc, split_auc
-
-
-def generate_feature_matrix(data: Data, surrogates: Surrogates, selected_features):
-    surrogate_matrix = pd.DataFrame({
-        '__'.join(surrogate.variable_names): data.feature_transformation(
-            data.frame[surrogate.variable_names].sum(axis=1)
-        ) for surrogate in surrogates
-    })
-    surrogate_matrix[data.hu_feature] = data.feature_transformation(
-        data.frame[data.hu_feature]
-    )
-    other_matrix = pd.DataFrame({
-        col: data.feature_transformation(data.frame[col])
-        for col in set(selected_features) - set(surrogate_matrix.columns)
-    })
-    lr = LinearRegression()
-    lr.fit(surrogate_matrix, other_matrix)
-    pred = lr.predict(surrogate_matrix)
-    residual = (other_matrix - pred)  # get residual
-    for col in residual.columns:
-        surrogate_matrix[col] = residual[col]
-    return surrogate_matrix
