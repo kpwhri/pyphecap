@@ -1,17 +1,28 @@
 from sklearn.metrics import roc_auc_score
+import numpy as np
+import pandas as pd
 
 from pyphecap.feature_matrix import build_feature_matrix, generate_feature_matrix
 from pyphecap.phecap_data import Data
-from pyphecap.sklearn_utils import unpack_columns, build_classifier, get_auc
+from pyphecap.sklearn_utils import build_classifier, get_auc
 from pyphecap.surrogate import Surrogates
 
 
 def predict_phenotype(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],
-                      method='lasso_bic'):
+                      valid_roc, method='lasso_bic'):
     matrix = generate_feature_matrix(data, surrogates, selected_features)
     clf = build_classifier(coefficients, method=method)
     preds = clf.predict(matrix)
-    return preds
+    fprs = valid_roc.T[0]
+    idx = np.argmin(abs(fprs - 0.05))
+    cutoff_fpr95 = valid_roc[idx][2]  # threshold
+    case_status = np.where(preds >= cutoff_fpr95, 1, 0)
+    phenotype_df = pd.DataFrame({
+        data.patient_id: data.frame[data.patient_id],
+        'prediction': preds,
+        'case_status': case_status,
+    })
+    return phenotype_df
 
 
 def validate_phenotyping_model(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],

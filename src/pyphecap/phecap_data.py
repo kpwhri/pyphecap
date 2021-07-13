@@ -15,7 +15,7 @@ class Data:
     hu_feature: str  # utilization column name
     label: str  # gold standard label column name
     validation: str  # column name with 1=valid, 0=train
-    patient_id: str = None  # patient id column
+    patient_id: str = 'patient_id'  # patient id column
     subject_weight: list[float] = None  # list of weights for each subject
     feature_transformation = np.log1p  # or is it a function?
     training_set: pd.DataFrame = None
