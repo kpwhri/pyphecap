@@ -8,11 +8,16 @@ from pyphecap.sklearn_utils import build_classifier, get_auc
 from pyphecap.surrogate import Surrogates
 
 
-def predict_phenotype(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],
-                      valid_roc, method='lasso_bic'):
+def predict_probabilities(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],
+                          method='lasso_bic'):
     matrix = generate_feature_matrix(data, surrogates, selected_features)
     clf = build_classifier(coefficients, method=method)
-    preds = clf.predict(matrix)
+    return clf.predict(matrix)
+
+
+def predict_phenotype(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],
+                      valid_roc, method='lasso_bic'):
+    preds = predict_probabilities(data, surrogates, coefficients, selected_features, method=method)
     fprs = valid_roc.T[0]
     idx = np.argmin(abs(fprs - 0.05))
     cutoff_fpr95 = valid_roc[idx][2]  # threshold
