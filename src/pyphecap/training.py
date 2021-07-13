@@ -4,7 +4,7 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 from pyphecap.feature_matrix import build_feature_matrix
 from pyphecap.phecap_data import Data
-from pyphecap.sklearn_utils import get_auc
+from pyphecap.sklearn_utils import get_auc, pack_intercept_and_coefficients
 from pyphecap.surrogate import Surrogates
 
 
@@ -41,7 +41,7 @@ def get_roc_auc(x, y, method, train_percent):
         roc_auc = roc_auc_score(y.iloc[test_idx], y_pred_te)
         roc_data.append(roc_auc)
 
-    coefficients = list(zip(['intercept'] + list(x.columns), [clf.intercept_] + clf.coef_))
+    coefficients = pack_intercept_and_coefficients(clf, x)
     split_auc = sum(auc_data) / len(auc_data)
     split_roc = sum(roc_data) / len(roc_data)
     return coefficients, train_roc, train_auc, split_roc, split_auc

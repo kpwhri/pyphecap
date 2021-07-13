@@ -4,7 +4,7 @@ from sklearn.metrics import roc_curve
 
 
 def pack_intercept_and_coefficients(clf, x):
-    return list(zip(['intercept'] + list(x.columns), [clf.intercept_] + clf.coef_))
+    return list(zip(['intercept'] + list(x.columns), [clf.intercept_] + list(clf.coef_)))
 
 
 def unpack_coefficients(intercept_and_coefficients):
