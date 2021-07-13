@@ -18,7 +18,7 @@ def train_phenotyping_model(data: Data, surrogates: Surrogates, selected_feature
     coefficients, train_roc, train_auc, split_roc, split_auc = get_roc_auc(
         x, y, method=method, train_percent=train_percent
     )
-    return coefficients, train_roc, split_roc
+    return coefficients, (train_roc, train_auc), (split_roc, split_auc)
 
 
 def get_roc_auc(x, y, method, train_percent):
@@ -26,7 +26,7 @@ def get_roc_auc(x, y, method, train_percent):
     clf.fit(x, y)
     y_pred = clf.predict(x)
     train_roc = roc_auc_score(y, y_pred)
-    train_auc = roc_curve(y, y_pred)
+    train_auc = get_auc(y, y_pred)
 
     auc_data = []
     roc_data = []
@@ -43,5 +43,5 @@ def get_roc_auc(x, y, method, train_percent):
 
     coefficients = list(zip(['intercept'] + list(x.columns), [clf.intercept_] + clf.coef_))
     split_auc = sum(auc_data) / len(auc_data)
-    split_roc = sum(roc_data)
+    split_roc = sum(roc_data) / len(roc_data)
     return coefficients, train_roc, train_auc, split_roc, split_auc

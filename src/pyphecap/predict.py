@@ -17,7 +17,7 @@ def predict_phenotype(data: Data, surrogates: Surrogates, coefficients: list, se
 
 def validate_phenotyping_model(data: Data, surrogates: Surrogates, coefficients: list, selected_features: list[str],
                                method='lasso_bic'):
-    x, y_true = build_feature_matrix(data, surrogates, selected_features, is_validation=False)
+    x, y_true = build_feature_matrix(data, surrogates, selected_features, is_validation=True)
     x = x[unpack_columns(coefficients)]
     # TODO: subject weights: subject_weight <- data$subject_weight[ii]
     clf = build_classifier(coefficients, method=method)
